@@ -9,6 +9,7 @@
 #include "../png.h"
 #include "../rfxswf.h"
 #include "swf.h"
+#include "../devices/pdf.h"
 
 typedef struct _map16_t
 {
@@ -293,30 +294,37 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
     }
     font = cfont->data;
 	
+	gfxcolor_t c = *(gfxcolor_t*)color;
+	
 	/* Convert SWF font to GFX font */
 	/* Based on devices/swf.c/gfxfont_to_swffont */
 	gfxfont_t*gfxfont = (gfxfont_t*)rfx_calloc(sizeof(gfxfont_t));
 	char* fontidstr = (char*)malloc(sizeof(char)*10);
 	sprintf(fontidstr, "%d", fontid);
 	gfxfont->id = fontidstr;
-	/*fprintf(stderr, "Font id: %s\n", gfxfont->id);*/
-	gfxfont->num_glyphs = font->swffont->numchars;
-	gfxfont->max_unicode = font->swffont->maxascii;
-	/*gfxfont->ascent = font->swffont->layout->ascent/20;*/
-	gfxfont->ascent = 0;
-	/*gfxfont->descent = font->swffont->layout->descent/20;*/
-	gfxfont->descent = 0;
-	gfxfont->unicode2glyph = font->swffont->ascii2glyph;
-	gfxglyph_t*gfxglyphs = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t) * font->numchars);
-	for (t = 0; t < font->numchars; t++) {
-		if(chars[t]<0 || chars[t]>= font->numchars) {
-			/*fprintf(stderr, "Character out of range: %d\n", chars[t]);*/
-		} else {
-			/*wprintf(L"Character %d: %lc\n", t, font->swffont->glyph2ascii[chars[t]]);*/
+	
+	if (gfxfontlist_hasfont(get_fontlist(info->r->device), gfxfont)) {
+		// Use the fixed version if it exists
+		gfxfont = gfxfontlist_findfont(get_fontlist(info->r->device), fontidstr);
+	} else {
+		gfxfont->num_glyphs = font->swffont->numchars;
+		gfxfont->max_unicode = font->swffont->maxascii;
+		/*gfxfont->ascent = font->swffont->layout->ascent/20;*/
+		gfxfont->ascent = 0;
+		/*gfxfont->descent = font->swffont->layout->descent/20;*/
+		gfxfont->descent = 0;
+		gfxfont->unicode2glyph = font->swffont->ascii2glyph;
+		/*for (t = 0; t < gfxfont->max_unicode; t++) {
+			fprintf(stderr, "%d -> %d\n", t, gfxfont->unicode2glyph[t]);
+		}*/
+		gfxglyph_t*gfxglyphs = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t) * font->numchars);
+		for (t = 0; t < font->numchars; t++) {
+			/*wprintf(L"Character %d: %d\n", t, font->swffont->glyph2ascii[t]);*/
 			gfxglyph_t*gfxglyph = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t));
-			gfxglyph->line = font->glyphs[chars[t]];
+			gfxglyph->line = font->glyphs[t];
 			gfxglyph->advance = 0;
-			gfxglyph->unicode = font->swffont->glyph2ascii[chars[t]];
+			gfxglyph->unicode = font->swffont->glyph2ascii[t];
+			gfxglyph->name = NULL;
 			if (gfxglyph->unicode >= 0 && gfxglyph->unicode <= 127) {
 				char* glyphname = (char*)malloc(sizeof(char)*10);
 				sprintf(glyphname, "%c", gfxglyph->unicode);
@@ -324,9 +332,9 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 			}
 			gfxglyphs[t] = *gfxglyph;
 		}
+		gfxfont->glyphs = gfxglyphs;
+		info->r->device->addfont(info->r->device, gfxfont);
 	}
-	gfxfont->glyphs = gfxglyphs;
-	info->r->device->addfont(info->r->device, gfxfont);
 
     for(t=0;t<nr;t++) {
 	int x = xstart + xpos[t];
@@ -350,17 +358,13 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	if(chars[t]<0 || chars[t]>= font->numchars) {
 	    fprintf(stderr, "Character out of range: %d\n", chars[t]);
 	} else {
-		gfxcolor_t c = *(gfxcolor_t*)color;
-		
+		/*const char* nameptr = (&gfxfont->glyphs[chars[t]])->name;
+		if (nameptr != NULL) {
+			fprintf(stdout, "%s", nameptr);
+		} else {
+			fprintf(stdout, "[%d=%d]", chars[t], gfxfont->glyphs[chars[t]].unicode);
+		}*/
 		info->r->device->drawchar(info->r->device, gfxfont, chars[t], &c, &gm);
-		return;
-            gfxline_t*line = gfxline_clone(font->glyphs[chars[t]]);
-            gfxline_transform(line, &gm);
-            FILLSTYLE f;
-            f.type = FILL_SOLID;
-            f.color = *color;
-            renderFilled(info->r, line, &f, 0, 0);
-            gfxline_free(line);
 	}
     }
 }

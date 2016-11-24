@@ -59,6 +59,11 @@ typedef struct _internal {
     double m00, m01, m10, m11;
 } internal_t;
 
+gfxfontlist_t* get_fontlist(gfxdevice_t*dev) {
+	internal_t* internal = (internal_t*)dev->internal;
+	return internal->fontlist;
+}
+
 static void restore_matrix(internal_t*i)
 {
     if(i->has_matrix) {
@@ -353,7 +358,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 {
     internal_t*i = (internal_t*)dev->internal;
 
-    int num = font->num_glyphs<256-32?font->num_glyphs:256-32;
+    int num = font->num_glyphs<256?font->num_glyphs:256;
     if(type3) {
 	int fontid = 0;
 	if(!gfxfontlist_hasfont(i->fontlist, font)) {
@@ -397,8 +402,17 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    const char*old_id = font->id;
 	    font->id = fontname;
 	    int t;
+		// PDFlib lite doesn't support Unicode, so we need to hack up a custom encoding :/
+		int gt8bits = 0;
 	    for(t=0;t<num;t++) {
-		font->glyphs[t].unicode = 32+t;
+		int uv = font->glyphs[t].unicode;
+		char name[32];
+		sprintf(name, "chr%d", t);
+		if (font->glyphs[t].unicode > 126) {
+			font->glyphs[t].unicode = 126 + (++gt8bits);
+			printf("\nRemapping %d (%d) to %d\n", t, uv, font->glyphs[t].unicode);
+		}
+		PDF_encoding_set_char(i->p, fontname, font->glyphs[t].unicode, name, uv); // cross our fingers and hope there aren't more than 256 glyphs
 	    }
 	    font->max_unicode = 0;
 	    font->unicode2glyph = 0;
@@ -422,7 +436,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 		fontname2[t*2+1] = 0;
 	    }
 	    
-	    fontid = PDF_load_font(i->p, fontname2, l*2, "host", "embedding=true");
+	    fontid = PDF_load_font(i->p, fontname2, l*2, fontname, "embedding=true");
 	    i->fontlist = gfxfontlist_addfont2(i->fontlist, font, (void*)(ptroff_t)fontid);
 	    /*unlink(filename);*/
 	}
@@ -478,7 +492,7 @@ void pdf_drawchar(gfxdevice_t*dev, gfxfont_t*font, int glyphnr, gfxcolor_t*color
 	PDF_setrgbcolor_fill(i->p, color->r/255.0, color->g/255.0, color->b/255.0);
 
 	char name[32];
-	sprintf(name, "%c", glyphnr+32);
+	sprintf(name, "%c", font->glyphs[glyphnr].unicode);
 
 	if(fabs(tx - i->lastx) > 0.001 || ty != i->lasty) {
 	    PDF_show_xy2(i->p, name, strlen(name), tx, ty);

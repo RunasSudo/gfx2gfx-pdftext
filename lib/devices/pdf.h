@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+gfxfontlist_t* get_fontlist(gfxdevice_t*dev);
 void gfxdevice_pdf_init(gfxdevice_t*dev);
 
 #ifdef __cplusplus
