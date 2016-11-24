@@ -411,10 +411,11 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 			numPrintableASCII += 1;
 		}
 		char name[32];
-		sprintf(name, "chr%d", t);
+		sprintf(name, "%s-%d", fontname, t);
 		if (font->glyphs[t].unicode > 126) {
 			font->glyphs[t].unicode = 126 + (++gt8bits);
 		}
+		/*fprintf(stderr, "%s: %d (%d) -> %d\n", fontname, t, font->glyphs[t].unicode, uv);*/
 		PDF_encoding_set_char(i->p, fontname, font->glyphs[t].unicode, name, uv); // cross our fingers and hope there aren't more than 256 glyphs
 	    }
 		
