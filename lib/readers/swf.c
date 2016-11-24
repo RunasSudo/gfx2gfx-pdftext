@@ -264,6 +264,7 @@ static void renderFilled(render_t*r, gfxline_t*line, FILLSTYLE*f, CXFORM*cx, MAT
 
 typedef struct
 {
+    SWFFONT* swffont;
     int numchars;
     gfxline_t**glyphs;
 } font_t;
@@ -290,6 +291,36 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	return;
     }
     font = cfont->data;
+	
+	/* Convert SWF font to GFX font */
+	/* Based on devices/swf.c/gfxfont_to_swffont */
+	gfxfont_t*gfxfont = (gfxfont_t*)rfx_calloc(sizeof(gfxfont_t));
+	char str[10];
+	sprintf(str, "%d", fontid);
+	gfxfont->id = str;
+	gfxfont->num_glyphs = font->swffont->numchars;
+	gfxfont->max_unicode = font->swffont->maxascii;
+	/*gfxfont->ascent = font->swffont->layout->ascent/20;*/
+	gfxfont->ascent = 0;
+	/*gfxfont->descent = font->swffont->layout->descent/20;*/
+	gfxfont->descent = 0;
+	gfxfont->unicode2glyph = font->swffont->ascii2glyph;
+	gfxglyph_t*gfxglyphs = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t) * font->numchars);
+	for (t = 0; t < font->numchars; t++) {
+		fprintf(stderr, "Character: %d, %d\n", t, chars[t]);
+		if(chars[t]<0 || chars[t]>= font->numchars) {
+			fprintf(stderr, "Character out of range: %d\n", chars[t]);
+		} else {
+			gfxglyph_t*gfxglyph = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t));
+			gfxglyph->line = font->glyphs[chars[t]];
+			gfxglyph->advance = 0;
+			gfxglyph->unicode = chars[t];
+			/*gfxglyph->name = font->swffont->glyphnames[t];*/
+			gfxglyphs[t] = *gfxglyph;
+		}
+	}
+	gfxfont->glyphs = gfxglyphs;
+	info->r->device->addfont(info->r->device, gfxfont);
 
     for(t=0;t<nr;t++) {
 	int x = xstart + xpos[t];
@@ -313,6 +344,10 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	if(chars[t]<0 || chars[t]>= font->numchars) {
 	    fprintf(stderr, "Character out of range: %d\n", chars[t]);
 	} else {
+		gfxcolor_t c = *(gfxcolor_t*)color;
+		
+		info->r->device->drawchar(info->r->device, gfxfont, chars[t], &c, &gm);
+		return;
             gfxline_t*line = gfxline_clone(font->glyphs[chars[t]]);
             gfxline_transform(line, &gm);
             FILLSTYLE f;
@@ -364,6 +399,7 @@ static map16_t* extractDefinitions(SWF*swf)
 	    SWFFONT*swffont = 0;
 	    font_t*font = (font_t*)rfx_calloc(sizeof(font_t));
 	    swf_FontExtract(swf, id, &swffont);
+            font->swffont = swffont;
             font->numchars = swffont->numchars;
             font->glyphs = (gfxline_t**)rfx_calloc(sizeof(gfxline_t*)*font->numchars);
             int t;
@@ -380,7 +416,7 @@ static map16_t* extractDefinitions(SWF*swf)
 		}
                 swf_Shape2Free(s2);
             }
-            swf_FontFree(swffont);
+            /*swf_FontFree(swffont);*/
 
 	    c->tag = tag;
 	    c->type = TYPE_FONT;
