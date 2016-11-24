@@ -426,8 +426,8 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 			char* glyphname = (char*)malloc(sizeof(char)*10);
 			sprintf(glyphname, " ");
 			gfxglyph->name = glyphname;
-			font->glyphs[num] = *gfxglyph;
-			font->num_glyphs += 1;
+			font->glyphs[0] = *gfxglyph;
+			/*font->num_glyphs += 1;*/
 			PDF_encoding_set_char(i->p, fontname, 32, "dummy", 32);
 		}
 		
