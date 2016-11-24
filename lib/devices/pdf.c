@@ -404,8 +404,12 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    int t;
 		// PDFlib lite doesn't support Unicode, so we need to hack up a custom encoding :/
 		int gt8bits = 0;
+		int numPrintableASCII = 0;
 	    for(t=0;t<num;t++) {
 		int uv = font->glyphs[t].unicode;
+		if (uv >= 32 && uv <= 126) {
+			numPrintableASCII += 1;
+		}
 		char name[32];
 		sprintf(name, "chr%d", t);
 		if (font->glyphs[t].unicode > 126) {
@@ -413,6 +417,20 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 		}
 		PDF_encoding_set_char(i->p, fontname, font->glyphs[t].unicode, name, uv); // cross our fingers and hope there aren't more than 256 glyphs
 	    }
+		
+		if (numPrintableASCII == 0) {
+			// Create a dummy glyph, or else PDFlib will complain that the encoding is not supported if there are no printable characters
+			gfxglyph_t*gfxglyph = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t));
+			gfxglyph->unicode = 32;
+			gfxglyph->name = NULL;
+			char* glyphname = (char*)malloc(sizeof(char)*10);
+			sprintf(glyphname, " ");
+			gfxglyph->name = glyphname;
+			font->glyphs[num] = *gfxglyph;
+			font->num_glyphs += 1;
+			PDF_encoding_set_char(i->p, fontname, 32, "dummy", 32);
+		}
+		
 	    font->max_unicode = 0;
 	    font->unicode2glyph = 0;
 	    gfxfont_save(font, filename);
@@ -658,5 +676,6 @@ void gfxdevice_pdf_init(gfxdevice_t*dev)
     i->has_matrix = 0;
     i->config_maxdpi = 72;
     i->p = PDF_new();
+    /*PDF_set_parameter(i->p, "logging", "filename=stderr classes={api=9 warning=9 font=9}");*/
     PDF_set_info(i->p, "Creator", "gfx2gfx-pdftext by RunasSudo");
 }
