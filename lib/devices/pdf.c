@@ -410,7 +410,6 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 		sprintf(name, "chr%d", t);
 		if (font->glyphs[t].unicode > 126) {
 			font->glyphs[t].unicode = 126 + (++gt8bits);
-			printf("\nRemapping %d (%d) to %d\n", t, uv, font->glyphs[t].unicode);
 		}
 		PDF_encoding_set_char(i->p, fontname, font->glyphs[t].unicode, name, uv); // cross our fingers and hope there aren't more than 256 glyphs
 	    }
@@ -443,6 +442,29 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
     }
 }
 
+void pdf_charpos(gfxdevice_t*dev, gfxmatrix_t*matrix, double* tx, double* ty)
+{
+	internal_t*i = (internal_t*)dev->internal;
+	gfxmatrix_t m = *matrix;
+
+	m.m00*=64;
+	m.m01*=64;
+	m.m10*=64;
+	m.m11*=64;
+	if(ttf) {
+	    m.m10 = -m.m10;
+	    m.m11 = -m.m11;
+	}
+
+	if(!(fabs(m.m00 - i->m00) < 1e-6 &&
+	     fabs(m.m01 - i->m01) < 1e-6 &&
+	     fabs(m.m10 - i->m10) < 1e-6 &&
+	     fabs(m.m11 - i->m11) < 1e-6)) {
+	    set_matrix(i, m.m00, m.m01, m.m10, m.m11);
+	}
+	transform_back(i, m.tx+i->config_xpad, m.ty+i->config_ypad, tx, ty);
+}
+
 void pdf_drawchar(gfxdevice_t*dev, gfxfont_t*font, int glyphnr, gfxcolor_t*color, gfxmatrix_t*matrix)
 {
     internal_t*i = (internal_t*)dev->internal;
@@ -468,25 +490,8 @@ void pdf_drawchar(gfxdevice_t*dev, gfxfont_t*font, int glyphnr, gfxcolor_t*color
 	assert(gfxfontlist_hasfont(i->fontlist, font));
 	int fontid = (int)(ptroff_t)gfxfontlist_getuserdata(i->fontlist, font->id);
 
-	gfxmatrix_t m = *matrix;
-
-	m.m00*=64;
-	m.m01*=64;
-	m.m10*=64;
-	m.m11*=64;
-	if(ttf) {
-	    m.m10 = -m.m10;
-	    m.m11 = -m.m11;
-	}
-
-	if(!(fabs(m.m00 - i->m00) < 1e-6 &&
-	     fabs(m.m01 - i->m01) < 1e-6 &&
-	     fabs(m.m10 - i->m10) < 1e-6 &&
-	     fabs(m.m11 - i->m11) < 1e-6)) {
-	    set_matrix(i, m.m00, m.m01, m.m10, m.m11);
-	}
 	double tx, ty;
-	transform_back(i, m.tx+i->config_xpad, m.ty+i->config_ypad, &tx, &ty);
+	pdf_charpos(dev, matrix, &tx, &ty);
 	
 	PDF_setfont(i->p, fontid, ttf?16.0:1.0);
 	PDF_setrgbcolor_fill(i->p, color->r/255.0, color->g/255.0, color->b/255.0);
@@ -503,6 +508,43 @@ void pdf_drawchar(gfxdevice_t*dev, gfxfont_t*font, int glyphnr, gfxcolor_t*color
 	i->lastx = tx + glyph->advance;
 	i->lasty = ty;
     }
+}
+
+void pdf_drawchars(gfxdevice_t*dev, gfxfont_t*font, int* chars, int len, gfxcolor_t*color, gfxmatrix_t*matrixes)
+{
+	internal_t*i = (internal_t*)dev->internal;
+	
+	double tx0, ty0;
+	pdf_charpos(dev, &matrixes[0], &tx0, &ty0);
+	double txlast = tx0, tylast = ty0;
+	
+	char text[len + 32];
+	double xadvance[len + 32];
+	
+	int k;
+	for (k = 0; k < len; k++) {
+		gfxglyph_t*glyph = &font->glyphs[chars[k]];
+		assert(gfxfontlist_hasfont(i->fontlist, font));
+		
+		char name[32];
+		sprintf(name, "%c", font->glyphs[chars[k]].unicode);
+		text[k] = name[0];
+		
+		if (k > 0) {
+			double tx, ty;
+			pdf_charpos(dev, &matrixes[k], &tx, &ty);
+			xadvance[k - 1] = tx - txlast;
+			txlast = tx; tylast = ty;
+		}
+	}
+	// y u do dis, pdflib
+	xadvance[len - 1] = 0;
+	
+	int fontid = (int)(ptroff_t)gfxfontlist_getuserdata(i->fontlist, font->id);
+	PDF_setfont(i->p, fontid, ttf?16.0:1.0);
+	PDF_setrgbcolor_fill(i->p, color->r/255.0, color->g/255.0, color->b/255.0);
+	PDF_set_text_pos(i->p, tx0, ty0);
+	PDF_xshow(i->p, text, len, xadvance);
 }
 
 void pdf_drawlink(gfxdevice_t*dev, gfxline_t*line, const char*action, const char*text)

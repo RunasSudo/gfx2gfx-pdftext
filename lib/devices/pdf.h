@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 gfxfontlist_t* get_fontlist(gfxdevice_t*dev);
+void pdf_drawchars(gfxdevice_t*dev, gfxfont_t*font, int* chars, int len, gfxcolor_t*color, gfxmatrix_t**matrixes);
 void gfxdevice_pdf_init(gfxdevice_t*dev);
 
 #ifdef __cplusplus

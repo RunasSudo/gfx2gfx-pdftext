@@ -336,6 +336,7 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		info->r->device->addfont(info->r->device, gfxfont);
 	}
 
+	/*gfxmatrix_t gms[nr + 32];*/
     for(t=0;t<nr;t++) {
 	int x = xstart + xpos[t];
 	int y = ystart;
@@ -354,6 +355,8 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 
         gfxmatrix_t gm;
         convertMatrix(&m, &gm);
+		
+		/*gms[t] = gm;*/
 
 	if(chars[t]<0 || chars[t]>= font->numchars) {
 	    fprintf(stderr, "Character out of range: %d\n", chars[t]);
@@ -367,6 +370,8 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		info->r->device->drawchar(info->r->device, gfxfont, chars[t], &c, &gm);
 	}
     }
+
+    /*pdf_drawchars(info->r->device, gfxfont, chars, nr, &c, gms);*/
 }
 
 
