@@ -437,7 +437,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    
 	    fontid = PDF_load_font(i->p, fontname2, l*2, fontname, "embedding=true");
 	    i->fontlist = gfxfontlist_addfont2(i->fontlist, font, (void*)(ptroff_t)fontid);
-	    /*unlink(filename);*/
+	    unlink(filename);
 	}
     }
 }
@@ -658,4 +658,5 @@ void gfxdevice_pdf_init(gfxdevice_t*dev)
     i->has_matrix = 0;
     i->config_maxdpi = 72;
     i->p = PDF_new();
+    PDF_set_info(i->p, "Creator", "gfx2gfx-pdftext by RunasSudo");
 }
