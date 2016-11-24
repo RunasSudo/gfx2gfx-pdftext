@@ -424,7 +424,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    
 	    fontid = PDF_load_font(i->p, fontname2, l*2, "host", "embedding=true");
 	    i->fontlist = gfxfontlist_addfont2(i->fontlist, font, (void*)(ptroff_t)fontid);
-	    unlink(filename);
+	    /*unlink(filename);*/
 	}
     }
 }

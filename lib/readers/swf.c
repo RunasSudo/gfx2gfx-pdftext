@@ -1,3 +1,4 @@
+#include <wchar.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "../gfxdevice.h"
@@ -295,9 +296,10 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	/* Convert SWF font to GFX font */
 	/* Based on devices/swf.c/gfxfont_to_swffont */
 	gfxfont_t*gfxfont = (gfxfont_t*)rfx_calloc(sizeof(gfxfont_t));
-	char str[10];
-	sprintf(str, "%d", fontid);
-	gfxfont->id = str;
+	char* fontidstr = (char*)malloc(sizeof(char)*10);
+	sprintf(fontidstr, "%d", fontid);
+	gfxfont->id = fontidstr;
+	/*fprintf(stderr, "Font id: %s\n", gfxfont->id);*/
 	gfxfont->num_glyphs = font->swffont->numchars;
 	gfxfont->max_unicode = font->swffont->maxascii;
 	/*gfxfont->ascent = font->swffont->layout->ascent/20;*/
@@ -307,15 +309,19 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	gfxfont->unicode2glyph = font->swffont->ascii2glyph;
 	gfxglyph_t*gfxglyphs = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t) * font->numchars);
 	for (t = 0; t < font->numchars; t++) {
-		fprintf(stderr, "Character: %d, %d\n", t, chars[t]);
 		if(chars[t]<0 || chars[t]>= font->numchars) {
-			fprintf(stderr, "Character out of range: %d\n", chars[t]);
+			/*fprintf(stderr, "Character out of range: %d\n", chars[t]);*/
 		} else {
+			/*wprintf(L"Character %d: %lc\n", t, font->swffont->glyph2ascii[chars[t]]);*/
 			gfxglyph_t*gfxglyph = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t));
 			gfxglyph->line = font->glyphs[chars[t]];
 			gfxglyph->advance = 0;
-			gfxglyph->unicode = chars[t];
-			/*gfxglyph->name = font->swffont->glyphnames[t];*/
+			gfxglyph->unicode = font->swffont->glyph2ascii[chars[t]];
+			if (gfxglyph->unicode >= 0 && gfxglyph->unicode <= 127) {
+				char* glyphname = (char*)malloc(sizeof(char)*10);
+				sprintf(glyphname, "%c", gfxglyph->unicode);
+				gfxglyph->name = glyphname;
+			}
 			gfxglyphs[t] = *gfxglyph;
 		}
 	}
