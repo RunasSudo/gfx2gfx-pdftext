@@ -310,19 +310,35 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		gfxfont->num_glyphs = font->swffont->numchars;
 		gfxfont->max_unicode = font->swffont->maxascii;
 		/*gfxfont->ascent = font->swffont->layout->ascent/20;*/
-		gfxfont->ascent = 0;
+		/*gfxfont->ascent = 0;*/
 		/*gfxfont->descent = font->swffont->layout->descent/20;*/
-		gfxfont->descent = 0;
+		/*gfxfont->descent = 0;*/
+		
+		double bymax = -1000, bymin = 1000;
+		
 		gfxfont->unicode2glyph = font->swffont->ascii2glyph;
 		/*for (t = 0; t < gfxfont->max_unicode; t++) {
 			fprintf(stderr, "%d -> %d\n", t, gfxfont->unicode2glyph[t]);
 		}*/
 		gfxglyph_t*gfxglyphs = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t) * font->numchars);
 		for (t = 0; t < font->numchars; t++) {
+			// Calculate bounding box
+			SHAPE2 *shape2 = swf_ShapeToShape2(font->swffont->glyph[t].shape);
+			SRECT bounds = swf_GetShapeBoundingBox(shape2);
+			swf_Shape2Free(shape2);free(shape2);
+			
+			/*printf("%d: %f %f %f %f\n", t, bounds.xmin/20.0, bounds.xmax/20.0, bounds.ymin/20.0, bounds.ymax/20.0);*/
+			if (bounds.ymax/20.0 > bymax) {
+				bymax = bounds.ymax/20.0;
+			}
+			if (bounds.ymin/20.0 < bymin) {
+				bymin = bounds.ymin/20.0;
+			}
+			
 			/*wprintf(L"Character %d: %d\n", t, font->swffont->glyph2ascii[t]);*/
 			gfxglyph_t*gfxglyph = (gfxglyph_t*)rfx_calloc(sizeof(gfxglyph_t));
 			gfxglyph->line = font->glyphs[t];
-			gfxglyph->advance = 0;
+			gfxglyph->advance = bounds.xmax/20.0;
 			gfxglyph->unicode = font->swffont->glyph2ascii[t];
 			gfxglyph->name = NULL;
 			if (gfxglyph->unicode >= 0 && gfxglyph->unicode <= 127) {
@@ -333,10 +349,17 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 			gfxglyphs[t] = *gfxglyph;
 		}
 		gfxfont->glyphs = gfxglyphs;
+		
+		/*printf("by: %f %f", bymin, bymax);*/
+		gfxfont->ascent = -bymax/20.0;
+		gfxfont->descent = bymin/20.0;
+		
 		info->r->device->addfont(info->r->device, gfxfont);
 	}
 
-	/*gfxmatrix_t gms[nr + 32];*/
+	#ifdef SINGLE_PASS
+	gfxmatrix_t gms[nr + 32];
+	#endif
     for(t=0;t<nr;t++) {
 	int x = xstart + xpos[t];
 	int y = ystart;
@@ -356,8 +379,11 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
         gfxmatrix_t gm;
         convertMatrix(&m, &gm);
 		
-		/*gms[t] = gm;*/
+		#ifdef SINGLE_PASS
+		gms[t] = gm;
+		#endif
 
+	#ifndef SINGLE_PASS
 	if(chars[t]<0 || chars[t]>= font->numchars) {
 	    fprintf(stderr, "Character out of range: %d\n", chars[t]);
 	} else {
@@ -369,9 +395,12 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		}*/
 		info->r->device->drawchar(info->r->device, gfxfont, chars[t], &c, &gm);
 	}
+	#endif
     }
 
-    /*pdf_drawchars(info->r->device, gfxfont, chars, nr, &c, gms);*/
+	#ifdef SINGLE_PASS
+    pdf_drawchars(info->r->device, gfxfont, chars, nr, &c, gms);
+	#endif
 }
 
 

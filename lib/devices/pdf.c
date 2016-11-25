@@ -442,7 +442,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    sprintf(cmd, "mv %s.ttf test.ttf", fontname);system(cmd);
 	    system("rm -f test.ttx");
 	    if(system("ttx test.ttf")&0xff00) exit(1);
-	    sprintf(cmd, "mv test.ttf %s.old.ttf", fontname, fontname);system(cmd);
+	    sprintf(cmd, "mv test.ttf %s.old.ttf", fontname);system(cmd);
 	    sprintf(cmd, "ttx test.ttx;mv test.ttf %s.ttf", fontname);system(cmd);
 	    sprintf(cmd, "rm -f test.ttx");system(cmd);
 #endif
