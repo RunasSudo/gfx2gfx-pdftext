@@ -403,20 +403,19 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    font->id = fontname;
 	    int t;
 		// PDFlib lite doesn't support Unicode, so we need to hack up a custom encoding :/
-		int gt8bits = 0;
+		int gt7bits = 0;
 		int numPrintableASCII = 0;
 	    for(t=0;t<num;t++) {
-		int uv = font->glyphs[t].unicode;
-		if (uv >= 32 && uv <= 126) {
+		if (font->glyphs[t].unicode >= 32 && font->glyphs[t].unicode <= 126) {
+			font->glyphs[t].eightbit = font->glyphs[t].unicode;
 			numPrintableASCII += 1;
-		}
-		char name[32];
-		sprintf(name, "%s-%d", fontname, t);
-		if (font->glyphs[t].unicode > 126) {
-			font->glyphs[t].unicode = 126 + (++gt8bits);
+		} else {
+			font->glyphs[t].eightbit = 126 + (++gt7bits);
 		}
 		/*fprintf(stderr, "%s: %d (%d) -> %d\n", fontname, t, font->glyphs[t].unicode, uv);*/
-		PDF_encoding_set_char(i->p, fontname, font->glyphs[t].unicode, name, uv); // cross our fingers and hope there aren't more than 256 glyphs
+		if (font->glyphs[t].unicode > 0) { // PDFlib thinks 0 means no Unicode value
+			PDF_encoding_set_char(i->p, fontname, font->glyphs[t].eightbit, "", font->glyphs[t].unicode); // cross our fingers and hope there aren't more than 256 glyphs
+		}
 	    }
 		
 		if (numPrintableASCII == 0) {
@@ -429,7 +428,7 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 			gfxglyph->name = glyphname;
 			font->glyphs[0] = *gfxglyph;
 			/*font->num_glyphs += 1;*/
-			PDF_encoding_set_char(i->p, fontname, 32, "dummy", 32);
+			PDF_encoding_set_char(i->p, fontname, 32, "", 32);
 		}
 		
 	    font->max_unicode = 0;
@@ -516,7 +515,7 @@ void pdf_drawchar(gfxdevice_t*dev, gfxfont_t*font, int glyphnr, gfxcolor_t*color
 	PDF_setrgbcolor_fill(i->p, color->r/255.0, color->g/255.0, color->b/255.0);
 
 	char name[32];
-	sprintf(name, "%c", font->glyphs[glyphnr].unicode);
+	sprintf(name, "%c", font->glyphs[glyphnr].eightbit);
 
 	if(fabs(tx - i->lastx) > 0.001 || ty != i->lasty) {
 	    PDF_show_xy2(i->p, name, strlen(name), tx, ty);
@@ -546,7 +545,7 @@ void pdf_drawchars(gfxdevice_t*dev, gfxfont_t*font, int* chars, int len, gfxcolo
 		assert(gfxfontlist_hasfont(i->fontlist, font));
 		
 		char name[32];
-		sprintf(name, "%c", font->glyphs[chars[k]].unicode);
+		sprintf(name, "%c", font->glyphs[chars[k]].eightbit);
 		text[k] = name[0];
 		
 		if (k > 0) {
