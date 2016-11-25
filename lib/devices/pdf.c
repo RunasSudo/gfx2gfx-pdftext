@@ -26,6 +26,7 @@
 #include <memory.h>
 #include <pdflib.h>
 #include <math.h>
+#include "pdf.h"
 #include "../os.h"
 #include "../q.h"
 #include "../log.h"
@@ -38,30 +39,9 @@
 #include "../gfximage.h"
 #include "../gfxfont.h"
 
-typedef struct _internal {
-    PDF* p;
-    
-    char config_addblankpages;
-    double config_xpad;
-    double config_ypad;
-    int config_maxdpi;
-    int config_mindpi;
-
-    int width,height;
-    int num_pages;
-
-    char*tempfile;
-    char*page_opts;
-    double lastx,lasty;
-    gfxfontlist_t*fontlist;
-
-    char has_matrix;
-    double m00, m01, m10, m11;
-} internal_t;
-
-gfxfontlist_t* get_fontlist(gfxdevice_t*dev) {
+internal_t* get_internal(gfxdevice_t*dev) {
 	internal_t* internal = (internal_t*)dev->internal;
-	return internal->fontlist;
+	return internal;
 }
 
 static void restore_matrix(internal_t*i)

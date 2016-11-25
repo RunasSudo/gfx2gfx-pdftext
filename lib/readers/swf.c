@@ -305,9 +305,9 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 	sprintf(fontidstr, "%d", fontid);
 	gfxfont->id = fontidstr;
 	
-	if (gfxfontlist_hasfont(get_fontlist(info->r->device), gfxfont)) {
+	if (gfxfontlist_hasfont(get_internal(info->r->device)->fontlist, gfxfont)) {
 		// Use the fixed version if it exists
-		gfxfont = gfxfontlist_findfont(get_fontlist(info->r->device), fontidstr);
+		gfxfont = gfxfontlist_findfont(get_internal(info->r->device)->fontlist, fontidstr);
 	} else {
 		gfxfont->num_glyphs = font->swffont->numchars;
 		gfxfont->max_unicode = font->swffont->maxascii;
