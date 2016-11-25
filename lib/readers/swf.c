@@ -1,5 +1,6 @@
 #include <wchar.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <assert.h>
 #include "../gfxdevice.h"
 #include "../gfxsource.h"
@@ -166,8 +167,9 @@ static gfxgradient_t* convertGradient(GRADIENT*from)
     return g;
 }
 
-gfxline_t* swfline_to_gfxline(SHAPELINE*line, int linestyle, int fillstyle0)
+gfxline_t* swfline_to_gfxline(SHAPELINE*line, int linestyle, int fillstyle0, bool flip)
 {
+    int flipflop = flip ? -1 : 1;
     gfxdrawer_t d;
     SCOORD x=0,y=0,xx=0,yy=0;
     gfxline_t*l;
@@ -181,13 +183,13 @@ gfxline_t* swfline_to_gfxline(SHAPELINE*line, int linestyle, int fillstyle0)
 	   line->fillstyle1 == fillstyle0 || 
 	   line->linestyle == linestyle) {
 	    if(line->type == lineTo) {
-		if(xx!=x || yy!=y) d.moveTo(&d, x/20.0,y/20.0);
-		d.lineTo(&d, line->x/20.0,line->y/20.0);
+		if(xx!=x || yy!=y) d.moveTo(&d, x/20.0,flipflop*y/20.0);
+		d.lineTo(&d, line->x/20.0,flipflop*line->y/20.0);
 		xx = line->x;
 		yy = line->y;
 	    } else if(line->type == splineTo) {
-		if(xx!=x || yy!=y) d.moveTo(&d, x/20.0,y/20.0);
-		d.splineTo(&d, line->sx/20.0, line->sy/20.0, line->x/20.0,line->y/20.0);
+		if(xx!=x || yy!=y) d.moveTo(&d, x/20.0,flipflop*y/20.0);
+		d.splineTo(&d, line->sx/20.0, flipflop*line->sy/20.0, line->x/20.0,flipflop*line->y/20.0);
 		xx = line->x;
 		yy = line->y;
 	    }
@@ -351,8 +353,8 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		gfxfont->glyphs = gfxglyphs;
 		
 		/*printf("by: %f %f", bymin, bymax);*/
-		gfxfont->ascent = -bymax/20.0;
-		gfxfont->descent = bymin/20.0;
+		gfxfont->ascent = -bymin/20.0;
+		gfxfont->descent = bymax/20.0;
 		
 		info->r->device->addfont(info->r->device, gfxfont);
 	}
@@ -453,7 +455,7 @@ static map16_t* extractDefinitions(SWF*swf)
                     swf_ShapeAddSolidFillStyle(swffont->glyph[t].shape, &color_white);
                 }
                 SHAPE2*s2 = swf_ShapeToShape2(swffont->glyph[t].shape);
-                font->glyphs[t] = swfline_to_gfxline(s2->lines, 0, 1);
+                font->glyphs[t] = swfline_to_gfxline(s2->lines, 0, 1, true);
 		if(tag->id==ST_DEFINEFONT3) {
 		    gfxmatrix_t m = {1/20.0,0,0, 0,1/20.0,0};
 		    gfxline_transform(font->glyphs[t], &m);
@@ -622,14 +624,14 @@ static void renderCharacter(render_t*r, placement_t*p, character_t*c)
 	int t;
 	
 	for(t=1;t<=shape.numlinestyles;t++) {
-	   gfxline_t*line = swfline_to_gfxline(shape.lines, t, -1);
+	   gfxline_t*line = swfline_to_gfxline(shape.lines, t, -1, false);
 	   if(line) renderOutline(r, line, &shape.linestyles[t-1], &p->po.cxform);
 	   gfxline_free(line);
 	}
 
 	for(t=1;t<=shape.numfillstyles;t++) {
 	   gfxline_t*line;
-	   line = swfline_to_gfxline(shape.lines, -1, t);
+	   line = swfline_to_gfxline(shape.lines, -1, t, false);
 	   if(line) {
 	       if(!p->po.clipdepth) {
 		   renderFilled(r, line, &shape.fillstyles[t-1], &p->po.cxform, &p->po.matrix);
@@ -639,7 +641,7 @@ static void renderCharacter(render_t*r, placement_t*p, character_t*c)
 	       }
 	   }
 	   gfxline_free(line);
-	   /*line = swfline_to_gfxline(shape.lines, -1, -1, t);
+	   /*line = swfline_to_gfxline(shape.lines, -1, -1, t, false);
 	   if(line) renderFilled(r, line, &shape.fillstyles[t-1], &p->po.cxform);
 	   gfxline_free(line);*/
 	}
