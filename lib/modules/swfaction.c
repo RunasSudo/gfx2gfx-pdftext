@@ -703,7 +703,7 @@ ActionMarker action_setMarker(ActionTAG*atag)
     return m;
 }
 
-int inline ActionTagSize(ActionTAG*atag)
+int ActionTagSize(ActionTAG*atag)
 {
     return (atag->op&0x80)?3+(atag->len):1+0;
 }

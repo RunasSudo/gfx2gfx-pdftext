@@ -29,7 +29,7 @@ typedef struct _internal {
     U8 alpha;
 } internal_t;
 
-static inline gfxcolor_t transform_color(internal_t*i, gfxcolor_t*col)
+static gfxcolor_t transform_color(internal_t*i, gfxcolor_t*col)
 {
     gfxcolor_t col2;
     col2.r = col->r;

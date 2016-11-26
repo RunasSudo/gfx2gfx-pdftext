@@ -57,7 +57,7 @@ static void dbg(char*format, ...)
     fflush(stdout);
 }
 
-inline gfxcolor_t transform_color(internal_t*i, gfxcolor_t*col)
+gfxcolor_t transform_color(internal_t*i, gfxcolor_t*col)
 {
     gfxcolor_t col2;
     /*col2.r = (col->r * i->alpha)>>8;
