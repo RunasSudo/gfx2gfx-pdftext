@@ -699,7 +699,7 @@ ttf_t* gfxfont_to_ttf(gfxfont_t*font, char eot)
 	}
 	dest->advance = src->advance*scale;
 
-	//dest->xmin=0; //TODO: might be necessary for some font engines?
+	dest->xmin=0; //TODO: might be necessary for some font engines?
 
 	dest->advance = src->advance*scale;
 

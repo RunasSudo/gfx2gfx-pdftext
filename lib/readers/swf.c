@@ -353,8 +353,8 @@ static void textcallback(void*self, int*chars, int*xpos, int nr, int fontid, int
 		gfxfont->glyphs = gfxglyphs;
 		
 		/*printf("by: %f %f", bymin, bymax);*/
-		gfxfont->ascent = -bymin/20.0;
-		gfxfont->descent = bymax/20.0;
+		gfxfont->ascent = -bymin;
+		gfxfont->descent = bymax;
 		
 		info->r->device->addfont(info->r->device, gfxfont);
 	}
