@@ -375,10 +375,8 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	int fontid = 0;
 	if(!gfxfontlist_hasfont(i->fontlist, font)) {
 	    char fontname[32],filename[32],fontname2[64];
-	    static int fontnr = 1;
-	    sprintf(fontname, "font%d", fontnr);
-	    sprintf(filename, "font%d.ttf", fontnr);
-	    fontnr++;
+	    sprintf(fontname, "font%s", font->id);
+	    sprintf(filename, "font%s.ttf", font->id);
 	    const char*old_id = font->id;
 	    font->id = fontname;
 	    int t;
@@ -390,9 +388,10 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 			font->glyphs[t].eightbit = font->glyphs[t].unicode;
 			numPrintableASCII += 1;
 		} else {
-			font->glyphs[t].eightbit = 126 + (++gt7bits);
+			font->glyphs[t].eightbit = 128 + (gt7bits++);
+			font->glyphs[t].unicode = font->glyphs[t].eightbit + 128;
 		}
-		/*fprintf(stderr, "%s: %d (%d) -> %d\n", fontname, t, font->glyphs[t].unicode, uv);*/
+		/*printf("%s: %d (%d) -> %d\n", fontname, t, font->glyphs[t].eightbit, font->glyphs[t].unicode);*/
 		if (font->glyphs[t].unicode > 0) { // PDFlib thinks 0 means no Unicode value
 			PDF_encoding_set_char(i->p, fontname, font->glyphs[t].eightbit, "", font->glyphs[t].unicode); // cross our fingers and hope there aren't more than 256 glyphs
 		}
