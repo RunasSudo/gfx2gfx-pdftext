@@ -6,7 +6,7 @@ mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 @SET_MAKE@
 
 # compiling
-DEFS=@DEFS@
+DEFS=@DEFS@ -DGIT_VERSION="$(shell git rev-parse --short HEAD)"
 INCLUDES=
 DEP=@CC@ -MM $(DEFS) $(INCLUDES) @CPPFLAGS@
 C=@CC@ -c $(DEFS) $(INCLUDES) @CPPFLAGS@ @CFLAGS@
