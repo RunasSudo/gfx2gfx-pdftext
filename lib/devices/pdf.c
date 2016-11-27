@@ -313,7 +313,7 @@ void pdf_fillbitmap(gfxdevice_t*dev, gfxline_t*line, gfximage_t*img, gfxmatrix_t
     unlink(tempfile);
     
     char options[80];
-    set_matrix(i, matrix->m00, matrix->m01, matrix->m10, -matrix->m11);
+    set_matrix(i, matrix->m00, matrix->m01, -matrix->m10, -matrix->m11);
     /* an image's (0,0) is at the lower left corner */
     double x=matrix->tx + i->config_xpad + matrix->m10*img->height;
     double y=matrix->ty + i->config_ypad + matrix->m11*img->height;
