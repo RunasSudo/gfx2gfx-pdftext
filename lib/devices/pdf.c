@@ -374,7 +374,13 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
     } else if(ttf) {
 	int fontid = 0;
 	if(!gfxfontlist_hasfont(i->fontlist, font)) {
-	    char fontname[32],filename[32],fontname2[64];
+	    char fontname[32],filename[32],fontnameutf16[64];
+		#ifdef FONT_TEST
+		char fontname2[32] = "FreeSerif";
+		#else
+		#define fontname2 fontname
+		#endif
+		
 	    sprintf(fontname, "font%s", font->id);
 	    sprintf(filename, "font%s.ttf", font->id);
 	    const char*old_id = font->id;
@@ -389,7 +395,10 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 			numPrintableASCII += 1;
 		} else {
 			font->glyphs[t].eightbit = 128 + (gt7bits++);
-			font->glyphs[t].unicode = font->glyphs[t].eightbit + 128;
+			#ifndef FONT_TEST
+			/*font->glyphs[t].unicode = font->glyphs[t].eightbit + 128;*/
+			font->glyphs[t].unicode = 57343 + gt7bits;
+			#endif
 		}
 		/*printf("%s: %d (%d) -> %d\n", fontname, t, font->glyphs[t].eightbit, font->glyphs[t].unicode);*/
 		if (font->glyphs[t].unicode > 0) { // PDFlib thinks 0 means no Unicode value
@@ -426,13 +435,17 @@ void pdf_addfont(gfxdevice_t*dev, gfxfont_t*font)
 	    sprintf(cmd, "rm -f test.ttx");system(cmd);
 #endif
 	   
-	    int l = strlen(fontname);
+	    int l = strlen(fontname2);
 	    for(t=0;t<l+1;t++) {
-		fontname2[t*2+0] = fontname[t];
-		fontname2[t*2+1] = 0;
+		fontnameutf16[t*2+0] = fontname2[t];
+		fontnameutf16[t*2+1] = 0;
 	    }
 	    
-	    fontid = PDF_load_font(i->p, fontname2, l*2, fontname, "embedding=true");
+		#ifdef FONT_TEST
+	    fontid = PDF_load_font(i->p, fontnameutf16, l*2, fontname, "embedding=false");
+		#else
+		fontid = PDF_load_font(i->p, fontnameutf16, l*2, fontname, "embedding=true");
+		#endif
 	    i->fontlist = gfxfontlist_addfont2(i->fontlist, font, (void*)(ptroff_t)fontid);
 	    unlink(filename);
 	}
